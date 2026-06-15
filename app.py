@@ -3,10 +3,14 @@ app.py — DocInsights: Enterprise Document Intelligence Suite
 Run with: streamlit run app.py
 """
 
-import sys, os, tempfile, shutil
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+
+# Bypassing strict protobuf/chromadb initialization tracking errors
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 os.environ["CHROMA_TELEMETRY_IMPL"] = "None"
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -79,33 +83,6 @@ section[data-testid="stSidebar"] { display: none !important; }
     display: flex; align-items: center; gap: 0.5rem;
 }
 
-/* Document Repository Cards Custom Button Wrappers */
-div.stButton > button.repo-btn-active {
-    background: linear-gradient(90deg, rgba(124, 58, 237, 0.15) 0%, rgba(14, 165, 233, 0.04) 100%) !important;
-    border: 1px solid #7c3aed !important;
-    color: #ffffff !important;
-    text-align: left !important;
-    padding: 0.75rem 1rem !important;
-    border-radius: 12px !important;
-    display: block !important;
-    width: 100% !important;
-}
-div.stButton > button.repo-btn-inactive {
-    background: rgba(255, 255, 255, 0.01) !important;
-    border: 1px solid rgba(255, 255, 255, 0.04) !important;
-    color: #94a3b8 !important;
-    text-align: left !important;
-    padding: 0.75rem 1rem !important;
-    border-radius: 12px !important;
-    display: block !important;
-    width: 100% !important;
-}
-div.stButton > button.repo-btn-inactive:hover {
-    border-color: rgba(124, 58, 237, 0.4) !important;
-    background: rgba(124, 58, 237, 0.02) !important;
-    color: #ffffff !important;
-}
-
 /* File Uploader Customizations */
 [data-testid="stFileUploader"] {
     background: rgba(9, 9, 20, 0.6) !important;
@@ -159,9 +136,6 @@ div.stButton > button.repo-btn-inactive:hover {
     border-radius: 12px !important; color: #f8fafc !important;
     font-size: 0.92rem !important; padding: 0.75rem 1rem !important;
 }
-[data-testid="stTextInput"] input:focus, [data-testid="stTextArea"] textarea:focus {
-    border-color: #7c3aed !important; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15) !important;
-}
 
 /* Action Button Overrides */
 [data-testid="stButton"] > button[kind="primary"] {
@@ -171,7 +145,6 @@ div.stButton > button.repo-btn-inactive:hover {
     padding: 0.6rem 1.4rem !important;
     box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
 }
-[data-testid="stButton"] > button[kind="primary"]:hover { transform: translateY(-1px); }
 
 .workspace-empty-state { text-align: center; padding: 3.5rem 2rem; border: 1px dashed rgba(255, 255, 255, 0.03); border-radius: 14px; }
 .workspace-empty-icon { font-size: 2.2rem; margin-bottom: 0.75rem; color: #7c3aed; }
@@ -223,26 +196,28 @@ with left_pane:
         label_visibility="collapsed"
     )
 
+    # FIXED: Added manual trigger button to parse/mount files securely out of volatile cache loops
     if uploaded_files:
-        from document_parser import parse_document
-        from vector_store import index_document
+        if st.button("⚡ Ingest & Vectorize Files", type="primary", use_container_width=True):
+            from document_parser import parse_document
+            from vector_store import index_document
 
-        for uf in uploaded_files:
-            if uf.name not in st.session_state.documents:
-                with st.spinner(f"Vectorizing {uf.name}..."):
-                    file_bytes = uf.read()
-                    docs = parse_document(file_bytes, uf.name)
-                    index_document(docs, uf.name)
-                    st.session_state.documents[uf.name] = {
-                        "pages": len(docs),
-                        "size": f"{len(file_bytes) / 1024:.1f} KB",
-                        "type": uf.name.split(".")[-1].upper()
-                    }
-                    if uf.name not in st.session_state.chat_history:
-                        st.session_state.chat_history[uf.name] = []
-                    st.session_state.active_doc = uf.name
-                st.toast(f"✓ Indexed {uf.name}")
-        st.rerun()
+            for uf in uploaded_files:
+                if uf.name not in st.session_state.documents:
+                    with st.spinner(f"Vectorizing {uf.name}..."):
+                        file_bytes = uf.read()
+                        docs = parse_document(file_bytes, uf.name)
+                        index_document(docs, uf.name)
+                        st.session_state.documents[uf.name] = {
+                            "pages": len(docs),
+                            "size": f"{len(file_bytes) / 1024:.1f} KB",
+                            "type": uf.name.split(".")[-1].upper()
+                        }
+                        if uf.name not in st.session_state.chat_history:
+                            st.session_state.chat_history[uf.name] = []
+                        st.session_state.active_doc = uf.name
+            st.toast("✓ Target materials successfully vectorized.")
+            st.rerun()
 
     st.markdown('<div style="margin-top:2rem"></div>', unsafe_allow_html=True)
     st.markdown('<div class="section-headline">📂 Active Repository</div>', unsafe_allow_html=True)
@@ -253,15 +228,15 @@ with left_pane:
         for fname, meta in list(st.session_state.documents.items()):
             is_active = (fname == st.session_state.active_doc)
             icon = type_icons.get(meta["type"], "📄")
-            btn_style = "repo-btn-active" if is_active else "repo-btn-inactive"
             
             card_col, del_col = st.columns([5, 1])
             with card_col:
-                # FIXED: Unified interactive selection frame to prevent broken state tracking loop
+                # FIXED: Removed broken native `class_name` attribute parameter from st.button.
+                # Replaced button layout wrapper logic to cleanly handle active vs inactive toggles.
+                label_prefix = "👉 [ACTIVE] " if is_active else ""
                 if st.button(
-                    f"{icon} {fname[:22]}... ({meta['type']})", 
+                    f"{label_prefix}{icon} {fname[:20]}...", 
                     key=f"card_select_{fname}", 
-                    class_name=btn_style, 
                     use_container_width=True
                 ):
                     st.session_state.active_doc = fname
@@ -306,7 +281,7 @@ with right_pane:
         <div style="background:rgba(10,10,22,0.3); border:1px dashed rgba(255,255,255,0.04); border-radius:24px; padding:8rem 2rem; text-align:center; margin-top:1rem;">
             <div style="font-size:4rem; margin-bottom:1.5rem; background:linear-gradient(135deg, #7c3aed, #0ea5e9); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-weight:bold;">◈</div>
             <h2 style="font-weight:700; color:#ffffff; font-size:1.4rem;">DocInsights Engine Awaiting Target</h2>
-            <p style="color:#475569; max-width:440px; margin:0.5rem auto 0; font-size:0.92rem; line-height:1.6;">Select a source framework from your active repository list on the left to mount the context terminal.</p>
+            <p style="color:#475569; max-width:440px; margin:0.5rem auto 0; font-size:0.92rem; line-height:1.6;">Click the Ingest button under your file upload window to process the contextual frame workspace terminal.</p>
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -372,7 +347,6 @@ with right_pane:
 
             deck_btn1, deck_spacer, deck_btn2 = st.columns([1.2, 3, 1.2])
             with deck_btn1:
-                # SUBMIT ACTION IS VISIBLE HERE NOW
                 execute_query = st.button("◈ Execute Prompt", type="primary", key=f"studio_run_prompt_{active}", use_container_width=True)
             with deck_btn2:
                 if st.button("Flush History", key=f"studio_flush_{active}", use_container_width=True):
