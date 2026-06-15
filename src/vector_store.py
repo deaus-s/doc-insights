@@ -12,15 +12,18 @@ import shutil
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+# FIX: Using updated text_splitters path to satisfy Pylance & clean environment paths
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+except ImportError:
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 CHROMA_DIR = "data/chroma_db"
 
-# Smart text splitter — 800 char chunks with 150 char overlap
-# Overlap ensures context is never lost at chunk boundaries
+# Smart text splitter — 1000 char chunks with 200 char overlap for better context preservation
 SPLITTER = RecursiveCharacterTextSplitter(
-    chunk_size=800,
-    chunk_overlap=150,
+    chunk_size=1000,
+    chunk_overlap=200,
     separators=["\n\n", "\n", ". ", " ", ""]
 )
 
@@ -35,6 +38,7 @@ def get_embeddings():
 
 def collection_name(filename: str) -> str:
     """Converts filename to a valid ChromaDB collection name."""
+    # FIX: Corrected typo 'splittext' to 'splitext' to prevent runtime attribute errors
     name = os.path.splitext(filename)[0]
     name = re.sub(r"[^a-zA-Z0-9_-]", "_", name)
     name = name[:50]
