@@ -26,6 +26,23 @@ Power BI turns that complex, convoluted patient data into clear, interactive vis
 
 ---
 
+## 🔗 Pipeline — how this was actually built
+
+This isn't just a static export — the [`pipeline/`](pipeline/) folder contains the real script that wires DocInsights' own ingestion code to this dataset:
+
+1. **Ingest** — `pipeline/extract_and_clean.py` calls DocInsights' `src/document_parser.py:parse_document()`, the exact function `app.py` calls when you upload a file in the Streamlit UI. This chunks `Heart_disease.csv` the same way DocInsights chunks any uploaded document, ready for embedding into ChromaDB via `src/vector_store.py`.
+2. **Structure** — the script renames the raw UCI column codes (`cp`, `exang`, `ca`, `thal`, …) into the readable labels used throughout this README and the dashboard, and writes the result to `pipeline/output/Heart_disease_cleaned.csv` — this is the file that was loaded into `Heart-Disease-Analysis.pbix`.
+3. **Validate** — the script also computes a lightweight, transparent sanity-check of the same factors Power BI's Key Influencers visual surfaces, and writes them to `pipeline/output/key_findings.md`.
+
+**Run it yourself:**
+```bash
+python heart-disease-powerbi/pipeline/extract_and_clean.py
+```
+
+> **Note on the numbers:** the multipliers in `pipeline/output/key_findings.md` are simple univariate likelihood ratios computed directly from the cleaned data — a quick, reproducible sanity check. The **3.00x / 2.32x / 2.13x / 2.09x** figures in the Key Findings table below come from Power BI's Key Influencers visual, which runs a multivariate stepwise regression controlling for the other clinical factors simultaneously — that's why the two sets of numbers differ, and the Power BI figures are the ones driving the dashboard.
+
+---
+
 ## 📊 Dashboard Features
 
 The report has **two interactive tabs** and **two slicers**, letting users filter results by age range and gender in real time.
@@ -90,7 +107,13 @@ Groups patients into segments and ranks them by likelihood of a positive diagnos
 heart-disease-powerbi/
 ├── README.md
 ├── Heart-Disease-Analysis.pbix
-├── Heart_disease.csv
+├── Heart_disease.csv               # raw source data
+├── pipeline/
+│   ├── extract_and_clean.py        # runs DocInsights' own parser on the CSV, then structures it
+│   └── output/
+│       ├── Heart_disease_cleaned.csv   # structured file loaded into Power BI
+│       ├── key_findings.json
+│       └── key_findings.md
 └── assets/
     ├── Age-Slicer.png
     ├── Gender-Slicer.png
