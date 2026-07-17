@@ -103,7 +103,7 @@ Upload → Vectorize → Query → Analyze → Compare
 
 Real-world applications built on top of the DocInsights extraction pipeline:
 
-- [Heart Disease Analysis (Power BI)](https://claude.ai/chat/heart-disease-powerbi) — DocInsights was used to extract and structure the UCI Heart Disease dataset, which then feeds an interactive Power BI dashboard surfacing the key clinical factors behind CVD diagnosis (exercise-induced angina, chest pain type, major vessel count, and more). [Demo video →](https://youtu.be/QpFf__Gq4xQ)
+- [Heart Disease Analysis (Power BI)](./heart-disease-powerbi) — DocInsights was used to extract and structure the UCI Heart Disease dataset, which then feeds an interactive Power BI dashboard surfacing the key clinical factors behind CVD diagnosis (exercise-induced angina, chest pain type, major vessel count, and more). [Demo video →](https://youtu.be/QpFf__Gq4xQ)
 
 ---
 
