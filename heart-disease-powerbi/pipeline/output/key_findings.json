@@ -1,0 +1,20 @@
+{
+  "Exercise-Induced Angina = No": {
+    "prevalence_pct": 67.33,
+    "likelihood_multiplier": 1.28
+  },
+  "Chest Pain Type != 0 (any atypical/non-anginal type)": {
+    "prevalence_pct": 52.81,
+    "likelihood_multiplier": 1.45
+  },
+  "Number of Major Vessels = 0": {
+    "prevalence_pct": 57.76,
+    "likelihood_multiplier": 1.36
+  },
+  "Slope of Peak Exercise ST Segment = 2": {
+    "prevalence_pct": 46.86,
+    "likelihood_multiplier": 1.38
+  },
+  "_base_rate_pct": 54.46,
+  "_total_patients": 303
+}
